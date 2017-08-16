@@ -872,6 +872,33 @@
     }
   });
 
+  // Message dialog lets the user know he's banned from the system.
+  Opeka.ReconnectingDialogView = Opeka.DialogView.extend({
+    initialize: function (options) {
+      // Make sure options is an object.
+      options = options || {};
+
+      // Provide a default title.
+      options.title = options.title || Drupal.t('Reconnecting');
+
+      // Provide a default message.
+      options.message = options.message || Drupal.t('Your connection to the chat server was lost. Please wait, we are trying to reconnect.');
+
+      options.content = this.make('p', {'class': "message"}, options.message);
+
+      options.dialogOptions = {
+        closeOnEscape: false,
+        open: function (event, ui) {
+          $(".ui-dialog-titlebar-close", ui.dialog | ui).hide();
+        }
+      };
+
+
+      // Call the parent initialize once we're done customising.
+      return Opeka.DialogView.prototype.initialize.call(this, options);
+    }
+  });
+
   // Message dialog that forces the user to reload the page to continue.
   Opeka.FatalErrorDialogView = Opeka.DialogView.extend({
     initialize: function (options) {
@@ -1958,18 +1985,9 @@
       //add a random number to each anonymous user to help in distinguishing them
       var x = Math.floor((Math.random() * 50) + 1);
 
-      var question = this.$el.find('p.screening-question').text();
+      var question = this.$el.find('.screening-question').text();
       var answer = this.$el.find('input[name=screening]:checked').val();
-      var screeningRequired = (Drupal.settings.opeka_screening && Drupal.settings.opeka_screening.opeka_screening_required);
-      var validationError;
-
-      var errMsg = Drupal.t('You must answer the question before you can enter the chat.');
-      // Check if an option has been chosen if answering is required
-      if (screeningRequired && (answer === undefined) && !user.admin) {
-        alert(errMsg);
-        validationError = true;
-      }
-
+      // @todo: save other answer options as well
       user.nickname = this.$el.find('.nickname').val() || Drupal.t('Anonymous!x', {'!x': x});
       user.age = this.$el.find('.age').val();
       user.gender = this.$el.find('.gender').val();
@@ -1978,14 +1996,12 @@
       user.roomId = user.roomId ? user.roomId : this.roomId;
       user.queueId = this.queueId;
 
-      if (!validationError) {
-        Opeka.signIn(user, function () {
-          view.$el.fadeOut();
-          $(window).bind('beforeunload.opeka', function () {
-            return Drupal.t('Do you really want to leave this page?');
-          });
+      Opeka.signIn(user, function () {
+        view.$el.fadeOut();
+        $(window).bind('beforeunload.opeka', function () {
+          return Drupal.t('Do you really want to leave this page?');
         });
-      }
+      });
 
       if (event) {
         event.preventDefault();

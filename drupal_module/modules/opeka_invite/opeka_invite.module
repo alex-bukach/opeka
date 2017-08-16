@@ -62,7 +62,6 @@ function opeka_invite_permission() {
 function opeka_invite_create_ajax() {
   $values = $_POST;
   $errors = array();
-  global $user;
 
   $mail = trim(check_plain($values['email']));
   if ($message = user_validate_mail($mail)) {
@@ -101,13 +100,9 @@ function opeka_invite_create_ajax() {
     'token' => drupal_random_key(),
   );
   if (drupal_write_record('opeka_invite', $record)) {
-    // Send email to the invited user.
+
+    // Send email.
     drupal_mail('opeka_invite', 'invite', $invitee . '<' . $mail . '>', language_default(), $record);
-    // counselor name and email
-    $c_name = $user->name;
-    $c_mail = $user->mail;
-    // Send copy of email to the counselor.
-    drupal_mail('opeka_invite', 'invite_copy', $c_name . '<' . $c_mail . '>', language_default(), $record);
 
     // Prepare record.
     unset($record['token']);
@@ -121,7 +116,6 @@ function opeka_invite_create_ajax() {
  */
 function opeka_invite_cancel_ajax() {
   $values = $_POST;
-  global $user;
 
   if (isset($values['invite_id']) && is_numeric($values['invite_id'])) {
     $query = db_select('opeka_invite', ' oi');
@@ -137,11 +131,6 @@ function opeka_invite_cancel_ajax() {
       ) {
         // Send email.
         drupal_mail('opeka_invite', 'cancel', $record['invitee'] . '<' . $record['email'] . '>', language_default(), $record);
-        // counselor name and email
-        $c_name = $user->name;
-        $c_mail = $user->mail;
-        // Send copy of email to the counselor.
-        drupal_mail('opeka_invite', 'cancel_copy', $c_name . '<' . $c_mail . '>', language_default(), $record);
         drupal_json_output($values['invite_id']);
         return;
       }
@@ -274,7 +263,7 @@ function opeka_invite_setting_form($form, $form_state) {
     '#options' => array(
       0 => t('Never delete'),
       1 => t('1 hour'),
-      6 => t('6 hours'),
+      6 => t('1 hours'),
       12 => t('12 hours'),
       24 => t('1 day'),
       72 => t('3 days'),
@@ -305,7 +294,7 @@ function opeka_invite_settings() {
 Opeka chat team.'),
     'subject' => variable_get('opeka_invite_subject', 'Invitation to [chat]'),
     'prefix' => variable_get('opeka_invite_message', 'Also [counselor] left a message for you:'),
-    'cancel_subject' => variable_get('opeka_invite_cancel_subject', '[chat] has been cancelled'),
+    'cancel_subject' => variable_get('opeka_invite_cancel_subject', '[chat] is cancelled'),
     'cancel_body' => variable_get('opeka_invite_cancel_body', 'Dear [name],
 
 [counselor] has just cancelled your chat previously scheduled on [date].
@@ -337,7 +326,7 @@ function opeka_invite_mail($key, &$message, $invite) {
     '[message]' => $invite['comment'],
   );
 
-  if ($key == 'invite' || $key == 'invite_copy') {
+  if ($key == 'invite') {
     $subject = $defaults['subject'];
     $body = $defaults['body'];
 
@@ -346,20 +335,10 @@ function opeka_invite_mail($key, &$message, $invite) {
         $variables['[message]'] = $defaults['prefix'] . "\n\n" . $variables['[message]'];
       }
     }
-    if ($key == 'invite_copy') {
-      $subject = t('Copy of invitation: ') . $defaults['subject'];
-      $text = t('The following invitation has just been sent to @invitee: ', array('@invitee' => $variables['[name]'])) . "\n\n" ;
-      $body = $text . $defaults['body'];
-    }
   }
-  elseif ($key == 'cancel' || $key == 'cancel_copy') {
-    $subject = $defaults['cancel_subject'];
-    $body = $defaults['cancel_body'];
-    if ($key == 'cancel_copy') {
-      $subject = t('Copy of cancellation: ') . $defaults['cancel_subject'];
-      $text = t('The following cancellation has just been sent to @invitee: ', array('@invitee' => $variables['[name]'])) . "\n\n" ;
-      $body = $text . $defaults['cancel_body'];
-    }
+  elseif ($key == 'cancel') {
+    $subject = $defaults['subject'];
+    $body = $defaults['body'];
   }
 
   if ($variables['[message]']) {
