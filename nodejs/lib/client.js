@@ -104,8 +104,11 @@ var Client = function(server, stream, remote, conn) {
     };
 
     self.onConnectionClosed = function() {
-        groups.unregisterClient(self);
-        self.server.handleConnectionClosed(self);
+      util.log('Connection closed for ' + self.clientId);
+      groups.unregisterClient(self);
+        if (self.server){
+            self.server.handleConnectionClosed(self);
+        }
 
         // Break relations to objects that might be troublesome to garbage collect
         self.server = null;
